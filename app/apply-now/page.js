@@ -1,14 +1,13 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
-export default function ApplyNowPage() {
+// ─── Inner form component (uses useSearchParams safely inside Suspense) ───────
+function ApplyForm() {
   const searchParams = useSearchParams();
-  
+
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -31,26 +30,19 @@ export default function ApplyNowPage() {
   useEffect(() => {
     const course = searchParams.get('course');
     const university = searchParams.get('university');
-    
-    if (course) {
-      setFormData(prev => ({ ...prev, courseInterested: course }));
-    }
-    if (university) {
-      setFormData(prev => ({ ...prev, universityPreference: university }));
-    }
+
+    if (course) setFormData(prev => ({ ...prev, courseInterested: course }));
+    if (university) setFormData(prev => ({ ...prev, universityPreference: university }));
   }, [searchParams]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-    }
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
   };
 
   const validateForm = () => {
     const newErrors = {};
-
     if (!formData.fullName.trim()) newErrors.fullName = 'Name is required';
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
@@ -64,33 +56,45 @@ export default function ApplyNowPage() {
     }
     if (!formData.education) newErrors.education = 'Please select your education level';
     if (!formData.courseInterested.trim()) newErrors.courseInterested = 'Please specify course';
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-  
-    emailjs.send(
-      "service_dh94mr9",
-      "template_12auxmf",
-      formData,
-      "kx2OiU7qpMSTRdWqQ"
-    )
-    .then(() => {
-      setIsSubmitted(true);
-      setFormData({
-        name: '',
-        email: '',
-        phone: '',
-        subject: '',
-        message: ''
+    if (!validateForm()) return;
+
+    // Load EmailJS dynamically (avoids SSR issues)
+    import('@emailjs/browser').then((emailjs) => {
+      emailjs.send(
+        'service_dh94mr9',
+        'template_12auxmf',
+        formData,
+        'kx2OiU7qpMSTRdWqQ'
+      )
+      .then(() => {
+        setIsSubmitted(true);
+        // Reset uses the correct field names matching formData
+        setFormData({
+          fullName: '',
+          email: '',
+          phone: '',
+          whatsapp: '',
+          dateOfBirth: '',
+          gender: '',
+          education: '',
+          courseInterested: '',
+          universityPreference: '',
+          studyMode: '',
+          city: '',
+          state: '',
+          message: ''
+        });
+        setTimeout(() => setIsSubmitted(false), 5000);
+      })
+      .catch((error) => {
+        console.error('Email error:', error);
       });
-      setTimeout(() => setIsSubmitted(false), 5000);
-    })
-    .catch((error) => {
-      console.error("Email error:", error);
     });
   };
 
@@ -129,47 +133,25 @@ export default function ApplyNowPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-
-            <h1 className="success-title">
-              Application Submitted Successfully! 🎉
-            </h1>
+            <h1 className="success-title">Application Submitted Successfully! 🎉</h1>
             <p className="success-desc">
-              Thank you, <strong>{formData.fullName}</strong>! Your admission enquiry has been received. 
+              Thank you, <strong>{formData.fullName}</strong>! Your admission enquiry has been received.
               Our expert counsellors will contact you shortly.
             </p>
-
             <div className="success-box">
               <div className="success-box-title">What happens next?</div>
               <div className="success-list">
-                <div className="success-list-item">
-                  <span className="success-check">✓</span>
-                  <span>Our counsellor will contact you within <strong>24 hours</strong></span>
-                </div>
-                <div className="success-list-item">
-                  <span className="success-check">✓</span>
-                  <span>We'll discuss course options and university selection</span>
-                </div>
-                <div className="success-list-item">
-                  <span className="success-check">✓</span>
-                  <span>Complete documentation support will be provided</span>
-                </div>
-                <div className="success-list-item">
-                  <span className="success-check">✓</span>
-                  <span>100% admission guarantee with no hidden charges</span>
-                </div>
+                <div className="success-list-item"><span className="success-check">✓</span><span>Our counsellor will contact you within <strong>24 hours</strong></span></div>
+                <div className="success-list-item"><span className="success-check">✓</span><span>We'll discuss course options and university selection</span></div>
+                <div className="success-list-item"><span className="success-check">✓</span><span>Complete documentation support will be provided</span></div>
+                <div className="success-list-item"><span className="success-check">✓</span><span>100% admission guarantee with no hidden charges</span></div>
               </div>
             </div>
-
             <p style={{ fontSize: 14, color: '#64748b', marginBottom: 20 }}>Need immediate assistance?</p>
             <div className="success-btns">
-              <a href="tel:+917027977081" className="btn-success-primary">
-                📞 Call Now
-              </a>
-              <a href="https://wa.me/917027977081" target="_blank" rel="noopener noreferrer" className="btn-success-secondary">
-                💬 WhatsApp
-              </a>
+              <a href="tel:+917027977081" className="btn-success-primary">📞 Call Now</a>
+              <a href="https://wa.me/917027977081" target="_blank" rel="noopener noreferrer" className="btn-success-secondary">💬 WhatsApp</a>
             </div>
-
             <div className="success-links">
               <Link href="/" className="success-link">← Back to Home</Link>
               <Link href="/courses" className="success-link">Browse Courses</Link>
@@ -189,7 +171,6 @@ export default function ApplyNowPage() {
         .apply-page { font-family: 'Plus Jakarta Sans', sans-serif; }
         .apply-page * { box-sizing: border-box; }
         @keyframes popPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.5)} }
-        
         .apply-hero { position: relative; min-height: 45vh; display: flex; align-items: center; overflow: hidden; background: var(--navy); padding-top: 68px; }
         .apply-hero::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse 70% 50% at 60% 40%, rgba(37,99,196,.28) 0%, transparent 70%), radial-gradient(ellipse 40% 50% at 20% 80%, rgba(232,146,58,.12) 0%, transparent 60%); }
         .apply-hero::after { content: ''; position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px); background-size: 60px 60px; }
@@ -199,17 +180,14 @@ export default function ApplyNowPage() {
         .apply-hero-h1 { font-family: 'Playfair Display', serif; font-size: clamp(32px,5vw,48px); font-weight: 700; color: #fff; line-height: 1.15; margin-bottom: 16px; }
         .apply-hero-h1 em { font-style: italic; color: var(--gold); }
         .apply-hero-p { font-size: 16px; color: rgba(255,255,255,.65); line-height: 1.7; max-width: 560px; margin: 0 auto; }
-
         .apply-section { padding: 64px 32px; background: #f8faff; }
         .apply-inner { max-width: 900px; margin: 0 auto; }
         .apply-card { background: #fff; border: 1px solid var(--border); border-radius: 24px; padding: 48px; box-shadow: 0 4px 20px rgba(0,0,0,.04); }
-        
         .apply-badges { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 36px; }
         .apply-badge { padding: 6px 16px; border-radius: 99px; font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
         .badge-green { background: rgba(76,175,130,.12); color: #1b5e20; border: 1px solid rgba(76,175,130,.25); }
         .badge-blue { background: rgba(37,99,196,.12); color: #1a4a8a; border: 1px solid rgba(37,99,196,.25); }
         .badge-gold { background: rgba(232,146,58,.12); color: #b5541e; border: 1px solid rgba(232,146,58,.25); }
-
         .apply-section-title { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: var(--navy); margin-bottom: 20px; padding-bottom: 14px; border-bottom: 2px solid var(--border); }
         .apply-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
         .apply-form-group { margin-bottom: 20px; }
@@ -222,28 +200,23 @@ export default function ApplyNowPage() {
         .apply-error { font-size: 12.5px; color: #dc2626; margin-top: 6px; }
         .apply-textarea { width: 100%; padding: 13px 16px; border-radius: 12px; border: 1.5px solid var(--border); background: #fff; font-size: 14px; font-family: 'Plus Jakarta Sans', sans-serif; color: #1e293b; outline: none; transition: all .25s ease; resize: vertical; min-height: 100px; }
         .apply-textarea:focus { border-color: var(--mid); background: #f0f5ff; box-shadow: 0 0 0 3px rgba(37,99,196,.08); }
-        
         .apply-terms { background: #f8faff; border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-bottom: 24px; }
         .apply-terms-label { display: flex; align-items: flex-start; gap: 12px; cursor: pointer; }
         .apply-checkbox { width: 18px; height: 18px; margin-top: 2px; border-radius: 4px; border: 1.5px solid var(--border); cursor: pointer; }
         .apply-terms-text { font-size: 13px; color: #475569; line-height: 1.6; }
-
         .apply-submit-row { display: flex; gap: 14px; }
         .apply-submit { flex: 1; padding: 15px 28px; border-radius: 12px; background: var(--accent); color: #fff; font-weight: 700; font-size: 15px; border: none; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; transition: all .3s cubic-bezier(.34,1.56,.64,1); box-shadow: 0 6px 20px rgba(232,146,58,.35); }
         .apply-submit:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 10px 28px rgba(232,146,58,.48); }
         .apply-call-btn { padding: 15px 28px; border-radius: 12px; background: rgba(15,23,42,.04); border: 1.5px solid var(--border); color: var(--navy); font-weight: 700; font-size: 15px; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all .25s ease; white-space: nowrap; }
         .apply-call-btn:hover { border-color: var(--mid); color: var(--mid); }
-
         .apply-help { text-align: center; font-size: 13px; color: #64748b; margin-top: 20px; }
         .apply-help a { color: var(--mid); text-decoration: none; font-weight: 600; }
         .apply-help a:hover { text-decoration: underline; }
-
         .apply-trust-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 32px; }
         .apply-trust-card { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 20px; text-align: center; }
         .apply-trust-emoji { font-size: 32px; margin-bottom: 10px; }
         .apply-trust-title { font-weight: 700; font-size: 14px; color: var(--navy); margin-bottom: 4px; }
         .apply-trust-desc { font-size: 12px; color: #64748b; }
-
         @media(max-width:768px) {
           .apply-section { padding: 48px 20px; }
           .apply-card { padding: 32px 24px; }
@@ -254,27 +227,22 @@ export default function ApplyNowPage() {
       `}</style>
 
       <div className="apply-page">
-        {/* Hero */}
         <section className="apply-hero">
           <div className="apply-hero-content">
             <div className="apply-hero-eyebrow">
               <span className="apply-hero-dot" />
               Start Your Journey
             </div>
-            <h1 className="apply-hero-h1">
-              Apply for <em>Admission</em>
-            </h1>
+            <h1 className="apply-hero-h1">Apply for <em>Admission</em></h1>
             <p className="apply-hero-p">
               Fill out the form below and our expert counsellors will guide you through the entire admission process — completely free.
             </p>
           </div>
         </section>
 
-        {/* Form Section */}
         <section className="apply-section">
           <div className="apply-inner">
             <div className="apply-card">
-              {/* Badges */}
               <div className="apply-badges">
                 <div className="apply-badge badge-green">✓ Free Counselling</div>
                 <div className="apply-badge badge-blue">✓ 100% Admission</div>
@@ -285,90 +253,37 @@ export default function ApplyNowPage() {
                 {/* Personal Information */}
                 <div style={{ marginBottom: 32 }}>
                   <div className="apply-section-title">Personal Information</div>
-                  
                   <div className="apply-form-row">
                     <div>
-                      <label className="apply-label">
-                        Full Name <span className="apply-required">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        name="fullName"
-                        value={formData.fullName}
-                        onChange={handleChange}
-                        className={`apply-input ${errors.fullName ? 'error' : ''}`}
-                        placeholder="Enter your full name"
-                      />
+                      <label className="apply-label">Full Name <span className="apply-required">*</span></label>
+                      <input type="text" name="fullName" value={formData.fullName} onChange={handleChange} className={`apply-input ${errors.fullName ? 'error' : ''}`} placeholder="Enter your full name" />
                       {errors.fullName && <div className="apply-error">{errors.fullName}</div>}
                     </div>
-
                     <div>
-                      <label className="apply-label">
-                        Email Address <span className="apply-required">*</span>
-                      </label>
-                      <input
-                        type="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleChange}
-                        className={`apply-input ${errors.email ? 'error' : ''}`}
-                        placeholder="your.email@example.com"
-                      />
+                      <label className="apply-label">Email Address <span className="apply-required">*</span></label>
+                      <input type="email" name="email" value={formData.email} onChange={handleChange} className={`apply-input ${errors.email ? 'error' : ''}`} placeholder="your.email@example.com" />
                       {errors.email && <div className="apply-error">{errors.email}</div>}
                     </div>
                   </div>
-
                   <div className="apply-form-row">
                     <div>
-                      <label className="apply-label">
-                        Phone Number <span className="apply-required">*</span>
-                      </label>
-                      <input
-                        type="tel"
-                        name="phone"
-                        value={formData.phone}
-                        onChange={handleChange}
-                        className={`apply-input ${errors.phone ? 'error' : ''}`}
-                        placeholder="10-digit mobile number"
-                        maxLength="10"
-                      />
+                      <label className="apply-label">Phone Number <span className="apply-required">*</span></label>
+                      <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className={`apply-input ${errors.phone ? 'error' : ''}`} placeholder="10-digit mobile number" maxLength="10" />
                       {errors.phone && <div className="apply-error">{errors.phone}</div>}
                     </div>
-
                     <div>
                       <label className="apply-label">WhatsApp Number</label>
-                      <input
-                        type="tel"
-                        name="whatsapp"
-                        value={formData.whatsapp}
-                        onChange={handleChange}
-                        className="apply-input"
-                        placeholder="Same as phone or different"
-                        maxLength="10"
-                      />
+                      <input type="tel" name="whatsapp" value={formData.whatsapp} onChange={handleChange} className="apply-input" placeholder="Same as phone or different" maxLength="10" />
                     </div>
                   </div>
-
                   <div className="apply-form-row">
                     <div>
                       <label className="apply-label">Date of Birth</label>
-                      <input
-                        type="date"
-                        name="dateOfBirth"
-                        value={formData.dateOfBirth}
-                        onChange={handleChange}
-                        className="apply-input"
-                      />
+                      <input type="date" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} className="apply-input" />
                     </div>
-
                     <div>
                       <label className="apply-label">Gender</label>
-                      <select
-                        name="gender"
-                        value={formData.gender}
-                        onChange={handleChange}
-                        className="apply-input"
-                      >
+                      <select name="gender" value={formData.gender} onChange={handleChange} className="apply-input">
                         <option value="">Select Gender</option>
                         <option value="male">Male</option>
                         <option value="female">Female</option>
@@ -381,18 +296,10 @@ export default function ApplyNowPage() {
                 {/* Educational Details */}
                 <div style={{ marginBottom: 32 }}>
                   <div className="apply-section-title">Educational Details</div>
-                  
                   <div className="apply-form-row">
                     <div>
-                      <label className="apply-label">
-                        Current Education Level <span className="apply-required">*</span>
-                      </label>
-                      <select
-                        name="education"
-                        value={formData.education}
-                        onChange={handleChange}
-                        className={`apply-input ${errors.education ? 'error' : ''}`}
-                      >
+                      <label className="apply-label">Current Education Level <span className="apply-required">*</span></label>
+                      <select name="education" value={formData.education} onChange={handleChange} className={`apply-input ${errors.education ? 'error' : ''}`}>
                         <option value="">Select Education Level</option>
                         <option value="9th-pass">9th Pass</option>
                         <option value="10th-pass">10th Pass</option>
@@ -403,44 +310,20 @@ export default function ApplyNowPage() {
                       </select>
                       {errors.education && <div className="apply-error">{errors.education}</div>}
                     </div>
-
                     <div>
-                      <label className="apply-label">
-                        Course Interested In <span className="apply-required">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        name="courseInterested"
-                        value={formData.courseInterested}
-                        onChange={handleChange}
-                        className={`apply-input ${errors.courseInterested ? 'error' : ''}`}
-                        placeholder="e.g., Distance MBA, 12th NIOS, B.Com"
-                      />
+                      <label className="apply-label">Course Interested In <span className="apply-required">*</span></label>
+                      <input type="text" name="courseInterested" value={formData.courseInterested} onChange={handleChange} className={`apply-input ${errors.courseInterested ? 'error' : ''}`} placeholder="e.g., Distance MBA, 12th NIOS, B.Com" />
                       {errors.courseInterested && <div className="apply-error">{errors.courseInterested}</div>}
                     </div>
                   </div>
-
                   <div className="apply-form-row">
                     <div>
                       <label className="apply-label">University Preference</label>
-                      <input
-                        type="text"
-                        name="universityPreference"
-                        value={formData.universityPreference}
-                        onChange={handleChange}
-                        className="apply-input"
-                        placeholder="e.g., IGNOU, NIOS, Any"
-                      />
+                      <input type="text" name="universityPreference" value={formData.universityPreference} onChange={handleChange} className="apply-input" placeholder="e.g., IGNOU, NIOS, Any" />
                     </div>
-
                     <div>
                       <label className="apply-label">Preferred Study Mode</label>
-                      <select
-                        name="studyMode"
-                        value={formData.studyMode}
-                        onChange={handleChange}
-                        className="apply-input"
-                      >
+                      <select name="studyMode" value={formData.studyMode} onChange={handleChange} className="apply-input">
                         <option value="">Select Study Mode</option>
                         <option value="regular">Regular / On-Campus</option>
                         <option value="distance">Distance Learning</option>
@@ -455,30 +338,14 @@ export default function ApplyNowPage() {
                 {/* Location */}
                 <div style={{ marginBottom: 32 }}>
                   <div className="apply-section-title">Location Details</div>
-                  
                   <div className="apply-form-row">
                     <div>
                       <label className="apply-label">City</label>
-                      <input
-                        type="text"
-                        name="city"
-                        value={formData.city}
-                        onChange={handleChange}
-                        className="apply-input"
-                        placeholder="Enter your city"
-                      />
+                      <input type="text" name="city" value={formData.city} onChange={handleChange} className="apply-input" placeholder="Enter your city" />
                     </div>
-
                     <div>
                       <label className="apply-label">State</label>
-                      <input
-                        type="text"
-                        name="state"
-                        value={formData.state}
-                        onChange={handleChange}
-                        className="apply-input"
-                        placeholder="Enter your state"
-                      />
+                      <input type="text" name="state" value={formData.state} onChange={handleChange} className="apply-input" placeholder="Enter your state" />
                     </div>
                   </div>
                 </div>
@@ -486,49 +353,32 @@ export default function ApplyNowPage() {
                 {/* Message */}
                 <div className="apply-form-group">
                   <label className="apply-label">Additional Message / Questions</label>
-                  <textarea
-                    name="message"
-                    value={formData.message}
-                    onChange={handleChange}
-                    className="apply-textarea"
-                    placeholder="Any specific questions or requirements? (Optional)"
-                  />
+                  <textarea name="message" value={formData.message} onChange={handleChange} className="apply-textarea" placeholder="Any specific questions or requirements? (Optional)" />
                 </div>
 
                 {/* Terms */}
                 <div className="apply-terms">
                   <label className="apply-terms-label">
-                    <input
-                      type="checkbox"
-                      required
-                      className="apply-checkbox"
-                    />
+                    <input type="checkbox" required className="apply-checkbox" />
                     <span className="apply-terms-text">
-                      I agree to receive admission updates via WhatsApp, Email, and SMS. 
-                      I understand that Scholar Bucket will assist me with the admission process 
-                      and documentation. *
+                      I agree to receive admission updates via WhatsApp, Email, and SMS.
+                      I understand that Scholar Bucket will assist me with the admission process and documentation. *
                     </span>
                   </label>
                 </div>
 
-                {/* Submit */}
                 <div className="apply-submit-row">
-                  <button type="submit" className="apply-submit">
-                    Submit Application →
-                  </button>
-                  <a href="tel:+917027977081" className="apply-call-btn">
-                    📞 Call Instead
-                  </a>
+                  <button type="submit" className="apply-submit">Submit Application →</button>
+                  <a href="tel:+917027977081" className="apply-call-btn">📞 Call Instead</a>
                 </div>
 
                 <p className="apply-help">
-                  Need help filling the form? 
+                  Need help filling the form?
                   <a href="https://wa.me/917027977081"> Chat with us on WhatsApp</a>
                 </p>
               </form>
             </div>
 
-            {/* Trust cards */}
             <div className="apply-trust-grid">
               <div className="apply-trust-card">
                 <div className="apply-trust-emoji">🔒</div>
@@ -550,5 +400,23 @@ export default function ApplyNowPage() {
         </section>
       </div>
     </>
+  );
+}
+
+// ─── Fallback shown while searchParams resolves ───────────────────────────────
+function FormSkeleton() {
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8faff' }}>
+      <div style={{ color: '#64748b', fontFamily: 'sans-serif' }}>Loading form…</div>
+    </div>
+  );
+}
+
+// ─── Default export wraps inner component in Suspense (required by Next.js) ──
+export default function ApplyNowPage() {
+  return (
+    <Suspense fallback={<FormSkeleton />}>
+      <ApplyForm />
+    </Suspense>
   );
 }
