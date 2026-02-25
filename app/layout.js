@@ -52,7 +52,7 @@ export default function RootLayout({ children }) {
         <Navbar />
 
         {/* Main Content Area */}
-        <main className="min-h-screen pt-20">
+        <main className="min-h-screen ">
           {children}
         </main>
 
