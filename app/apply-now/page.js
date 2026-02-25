@@ -65,7 +65,7 @@ function ApplyNowPage() {
     import('@emailjs/browser').then((emailjs) => {
       emailjs.send(
         'service_dh94mr9',
-        'template_12auxmf',
+        'template_qwrejmk',
         formData,
         'kx2OiU7qpMSTRdWqQ'
       )
