@@ -1,13 +1,10 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, Suspense, useCallback } from 'react';
 import Link from 'next/link';
+import SearchParamsReader from './SearchParamsReader';
 
-// ─── Inner form component (uses useSearchParams safely inside Suspense) ───────
-function ApplyForm() {
-  const searchParams = useSearchParams();
-
+function ApplyNowPage() {
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -27,13 +24,14 @@ function ApplyForm() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [errors, setErrors] = useState({});
 
-  useEffect(() => {
-    const course = searchParams.get('course');
-    const university = searchParams.get('university');
-
-    if (course) setFormData(prev => ({ ...prev, courseInterested: course }));
-    if (university) setFormData(prev => ({ ...prev, universityPreference: university }));
-  }, [searchParams]);
+  // Called by SearchParamsReader once params are available
+  const handleParams = useCallback(({ course, university }) => {
+    setFormData(prev => ({
+      ...prev,
+      ...(course ? { courseInterested: course } : {}),
+      ...(university ? { universityPreference: university } : {}),
+    }));
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -64,7 +62,6 @@ function ApplyForm() {
     e.preventDefault();
     if (!validateForm()) return;
 
-    // Load EmailJS dynamically (avoids SSR issues)
     import('@emailjs/browser').then((emailjs) => {
       emailjs.send(
         'service_dh94mr9',
@@ -74,22 +71,6 @@ function ApplyForm() {
       )
       .then(() => {
         setIsSubmitted(true);
-        // Reset uses the correct field names matching formData
-        setFormData({
-          fullName: '',
-          email: '',
-          phone: '',
-          whatsapp: '',
-          dateOfBirth: '',
-          gender: '',
-          education: '',
-          courseInterested: '',
-          universityPreference: '',
-          studyMode: '',
-          city: '',
-          state: '',
-          message: ''
-        });
         setTimeout(() => setIsSubmitted(false), 5000);
       })
       .catch((error) => {
@@ -116,16 +97,12 @@ function ApplyForm() {
           .success-list-item { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: #334155; }
           .success-check { color: var(--green); flex-shrink: 0; font-weight: 700; }
           .success-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 28px; }
-          .btn-success-primary { display: inline-flex; align-items: center; gap: 8px; background: var(--accent); color: #fff; font-weight: 700; font-size: 14.5px; padding: 13px 26px; border-radius: 12px; text-decoration: none; transition: all .3s cubic-bezier(.34,1.56,.64,1); box-shadow: 0 6px 20px rgba(232,146,58,.35); }
-          .btn-success-primary:hover { transform: translateY(-3px) scale(1.03); box-shadow: 0 10px 28px rgba(232,146,58,.48); }
-          .btn-success-secondary { display: inline-flex; align-items: center; gap: 8px; background: rgba(15,23,42,.04); border: 1.5px solid #e2e8f0; color: var(--navy); font-weight: 700; font-size: 14.5px; padding: 13px 26px; border-radius: 12px; text-decoration: none; transition: all .25s ease; }
-          .btn-success-secondary:hover { border-color: #2563c4; color: #2563c4; }
+          .btn-success-primary { display: inline-flex; align-items: center; gap: 8px; background: var(--accent); color: #fff; font-weight: 700; font-size: 14.5px; padding: 13px 26px; border-radius: 12px; text-decoration: none; transition: all .3s; box-shadow: 0 6px 20px rgba(232,146,58,.35); }
+          .btn-success-secondary { display: inline-flex; align-items: center; gap: 8px; background: rgba(15,23,42,.04); border: 1.5px solid #e2e8f0; color: var(--navy); font-weight: 700; font-size: 14.5px; padding: 13px 26px; border-radius: 12px; text-decoration: none; }
           .success-links { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; font-size: 13.5px; }
           .success-link { color: #2563c4; text-decoration: none; font-weight: 600; }
-          .success-link:hover { text-decoration: underline; }
           @media(max-width:600px) { .success-page { padding: 64px 20px; } .success-inner { padding: 40px 28px; } }
         `}</style>
-
         <div className="success-page">
           <div className="success-inner">
             <div className="success-icon">
@@ -141,10 +118,17 @@ function ApplyForm() {
             <div className="success-box">
               <div className="success-box-title">What happens next?</div>
               <div className="success-list">
-                <div className="success-list-item"><span className="success-check">✓</span><span>Our counsellor will contact you within <strong>24 hours</strong></span></div>
-                <div className="success-list-item"><span className="success-check">✓</span><span>We'll discuss course options and university selection</span></div>
-                <div className="success-list-item"><span className="success-check">✓</span><span>Complete documentation support will be provided</span></div>
-                <div className="success-list-item"><span className="success-check">✓</span><span>100% admission guarantee with no hidden charges</span></div>
+                {[
+                  'Our counsellor will contact you within 24 hours',
+                  "We'll discuss course options and university selection",
+                  'Complete documentation support will be provided',
+                  '100% admission guarantee with no hidden charges',
+                ].map((item, i) => (
+                  <div key={i} className="success-list-item">
+                    <span className="success-check">✓</span>
+                    <span>{item}</span>
+                  </div>
+                ))}
               </div>
             </div>
             <p style={{ fontSize: 14, color: '#64748b', marginBottom: 20 }}>Need immediate assistance?</p>
@@ -202,7 +186,7 @@ function ApplyForm() {
         .apply-textarea:focus { border-color: var(--mid); background: #f0f5ff; box-shadow: 0 0 0 3px rgba(37,99,196,.08); }
         .apply-terms { background: #f8faff; border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-bottom: 24px; }
         .apply-terms-label { display: flex; align-items: flex-start; gap: 12px; cursor: pointer; }
-        .apply-checkbox { width: 18px; height: 18px; margin-top: 2px; border-radius: 4px; border: 1.5px solid var(--border); cursor: pointer; }
+        .apply-checkbox { width: 18px; height: 18px; margin-top: 2px; cursor: pointer; }
         .apply-terms-text { font-size: 13px; color: #475569; line-height: 1.6; }
         .apply-submit-row { display: flex; gap: 14px; }
         .apply-submit { flex: 1; padding: 15px 28px; border-radius: 12px; background: var(--accent); color: #fff; font-weight: 700; font-size: 15px; border: none; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; transition: all .3s cubic-bezier(.34,1.56,.64,1); box-shadow: 0 6px 20px rgba(232,146,58,.35); }
@@ -211,7 +195,6 @@ function ApplyForm() {
         .apply-call-btn:hover { border-color: var(--mid); color: var(--mid); }
         .apply-help { text-align: center; font-size: 13px; color: #64748b; margin-top: 20px; }
         .apply-help a { color: var(--mid); text-decoration: none; font-weight: 600; }
-        .apply-help a:hover { text-decoration: underline; }
         .apply-trust-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 32px; }
         .apply-trust-card { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 20px; text-align: center; }
         .apply-trust-emoji { font-size: 32px; margin-bottom: 10px; }
@@ -227,6 +210,11 @@ function ApplyForm() {
       `}</style>
 
       <div className="apply-page">
+        {/* Reads ?course= and ?university= from URL, sets formData, renders nothing */}
+        <Suspense fallback={null}>
+          <SearchParamsReader onParams={handleParams} />
+        </Suspense>
+
         <section className="apply-hero">
           <div className="apply-hero-content">
             <div className="apply-hero-eyebrow">
@@ -373,8 +361,8 @@ function ApplyForm() {
                 </div>
 
                 <p className="apply-help">
-                  Need help filling the form?
-                  <a href="https://wa.me/917027977081"> Chat with us on WhatsApp</a>
+                  Need help filling the form?{' '}
+                  <a href="https://wa.me/917027977081">Chat with us on WhatsApp</a>
                 </p>
               </form>
             </div>
@@ -403,20 +391,4 @@ function ApplyForm() {
   );
 }
 
-// ─── Fallback shown while searchParams resolves ───────────────────────────────
-function FormSkeleton() {
-  return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8faff' }}>
-      <div style={{ color: '#64748b', fontFamily: 'sans-serif' }}>Loading form…</div>
-    </div>
-  );
-}
-
-// ─── Default export wraps inner component in Suspense (required by Next.js) ──
-export default function ApplyNowPage() {
-  return (
-    <Suspense fallback={<FormSkeleton />}>
-      <ApplyForm />
-    </Suspense>
-  );
-}
+export default ApplyNowPage;
