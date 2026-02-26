@@ -3,9 +3,10 @@ import './globals.css';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import WhatsAppButton from '@/components/WhatsAppButton';
+import Script from "next/script";
 
 // Font configuration
-const inter = Inter({ 
+const inter = Inter({
   subsets: ['latin'],
   display: 'swap',
 });
@@ -47,6 +48,7 @@ export default function RootLayout({ children }) {
         <meta name="theme-color" content="#1e40af" />
         <link rel="icon" href="/favicon.ico" />
       </head>
+
       <body className="antialiased">
         {/* Fixed Navbar */}
         <Navbar />
@@ -61,6 +63,19 @@ export default function RootLayout({ children }) {
 
         {/* Floating WhatsApp & Call Buttons */}
         <WhatsAppButton />
+
+        <Script
+          src={`https://www.googletagmanager.com/gtag/js?id=G-JT1FYJWXZM`}
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-JT1FYJWXZM');
+  `}
+        </Script>
       </body>
     </html>
   );
